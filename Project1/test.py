@@ -1,6 +1,8 @@
 import pyaudio
 import wave
 
+# code from https://realpython.com/playing-and-recording-sound-python/
+
 chunk = 1024  # Record in chunks of 1024 samples
 sample_format = pyaudio.paInt16  # 16 bits per sample
 channels = 1
