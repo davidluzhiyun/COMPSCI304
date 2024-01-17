@@ -3,11 +3,14 @@ import pyaudio
 import numpy as np
 import keyboard
 
+
+# Calculate the decibel of a frame of data points
 def energy_per_sample_in_decibel(frame):
-    energy = np.sum(np.frombuffer(frame, dtype=np.int16).astype(float)**2) / (len(frame)/2)
+    energy = np.sum(np.frombuffer(frame, dtype=np.int16).astype(float) ** 2) / (len(frame) / 2)
     return 10 * np.log10(energy)
 
 
+# The adaptive endpointing algorithm
 def classify_frame(audioframe, background, level, forgetfactor, threshold, adjustment):
     current = energy_per_sample_in_decibel(audioframe)
     isSpeech = False
@@ -24,6 +27,7 @@ def classify_frame(audioframe, background, level, forgetfactor, threshold, adjus
         isSpeech = True
 
     return isSpeech, background, level
+
 
 # Recording parameters
 chunk = 1024
@@ -59,9 +63,11 @@ current_isSpeech = False
 while True:
     audioframe = stream.read(chunk)
     frames.append(audioframe)
+    # Record at least 10 frames
     if len(frames) < 10:
         continue
     elif len(frames) == 10:
+        # Initialize background and level once the first 10 frames are recorded
         current_level = energy_per_sample_in_decibel(audioframe)
         current_background = energy_per_sample_in_decibel(b''.join(frames))
     else:
