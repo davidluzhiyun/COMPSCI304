@@ -4,8 +4,9 @@ import numpy as np
 import keyboard
 
 def energy_per_sample_in_decibel(frame):
-    energy = np.sum(np.frombuffer(frame, dtype=np.int16).astype(float)**2) / len(frame)
+    energy = np.sum(np.frombuffer(frame, dtype=np.int16).astype(float)**2) / (len(frame)/2)
     return 10 * np.log10(energy)
+
 
 def classify_frame(audioframe, background, level, forgetfactor, threshold, adjustment):
     current = energy_per_sample_in_decibel(audioframe)
@@ -28,13 +29,13 @@ def classify_frame(audioframe, background, level, forgetfactor, threshold, adjus
 chunk = 1024
 sample_format = pyaudio.paInt16
 channels = 1
-fs = 44100  # or 44100 for Mac users
+fs = 16000  # or 44100 for Mac users
 filename = "output.wav"
 
 # Endpointing algorithm parameters
 forgetfactor = 1.5
-adjustment = 0.025
-threshold = 15
+adjustment = 0.05
+threshold = 2
 
 # Initialize the PortAudio interface
 p = pyaudio.PyAudio()
@@ -50,17 +51,25 @@ print('Recording')
 stream = p.open(format=sample_format, channels=channels, rate=fs, input=True, frames_per_buffer=chunk)
 
 frames = []
-background = 0
-level = 0
-isSpeech = False
+current_background = 0
+current_level = 0
+current_isSpeech = False
 
 # Record until silence is detected
 while True:
     audioframe = stream.read(chunk)
-    isSpeech, background, level = classify_frame(audioframe, background, level, forgetfactor, threshold, adjustment)
     frames.append(audioframe)
-    if not isSpeech and len(frames) > 10:  # Ensure some audio has been recorded before stopping
-        break
+    if len(frames) < 10:
+        continue
+    elif len(frames) == 10:
+        current_level = energy_per_sample_in_decibel(audioframe)
+        current_background = energy_per_sample_in_decibel(b''.join(frames))
+    else:
+        current_isSpeech, current_background, current_level = classify_frame(audioframe, current_background,
+                                                                             current_level, forgetfactor, threshold,
+                                                                             adjustment)
+        if not current_isSpeech:
+            break
 
 # Stop and close the stream
 stream.stop_stream()
