@@ -3,6 +3,19 @@ import pyaudio
 import numpy as np
 import keyboard
 
+BACKGROUND_CALCULATION_FRAMES = 10
+
+# Recording parameters
+FRAME_SIZE = 1024
+SAMPLE_FORMAT = pyaudio.paInt16
+CHANNELS = 1
+SAMPLE_RATE = 16000  # or 44100 for Mac users
+FILENAME = "output.wav"
+
+# Endpointing algorithm parameters
+FORGET_FACTOR = 1.5
+ADJUSTMENT = 0.05
+THRESHOLD = 2
 
 # Calculate the decibel of a frame of data points
 def energy_per_sample_in_decibel(frame):
@@ -29,18 +42,6 @@ def classify_frame(audioframe, background, level, forgetfactor, threshold, adjus
     return isSpeech, background, level
 
 
-# Recording parameters
-chunk = 1024
-sample_format = pyaudio.paInt16
-channels = 1
-fs = 16000  # or 44100 for Mac users
-filename = "output.wav"
-
-# Endpointing algorithm parameters
-forgetfactor = 1.5
-adjustment = 0.05
-threshold = 2
-
 # Initialize the PortAudio interface
 p = pyaudio.PyAudio()
 
@@ -52,7 +53,7 @@ keyboard.wait('space')
 print('Recording')
 
 # Open the stream for recording
-stream = p.open(format=sample_format, channels=channels, rate=fs, input=True, frames_per_buffer=chunk)
+stream = p.open(format=SAMPLE_FORMAT, channels=CHANNELS, rate=SAMPLE_RATE, input=True, frames_per_buffer=FRAME_SIZE)
 
 frames = []
 current_background = 0
@@ -61,19 +62,19 @@ current_isSpeech = False
 
 # Record until silence is detected
 while True:
-    audioframe = stream.read(chunk)
+    audioframe = stream.read(FRAME_SIZE)
     frames.append(audioframe)
     # Record at least 10 frames
-    if len(frames) < 10:
+    if len(frames) < BACKGROUND_CALCULATION_FRAMES:
         continue
-    elif len(frames) == 10:
+    elif len(frames) == BACKGROUND_CALCULATION_FRAMES:
         # Initialize background and level once the first 10 frames are recorded
         current_level = energy_per_sample_in_decibel(audioframe)
         current_background = energy_per_sample_in_decibel(b''.join(frames))
     else:
         current_isSpeech, current_background, current_level = classify_frame(audioframe, current_background,
-                                                                             current_level, forgetfactor, threshold,
-                                                                             adjustment)
+                                                                             current_level, FORGET_FACTOR, THRESHOLD,
+                                                                             ADJUSTMENT)
         if not current_isSpeech:
             break
 
@@ -87,9 +88,9 @@ p.terminate()
 print('Finished recording')
 
 # Save the recorded data as a WAV file
-wf = wave.open(filename, 'wb')
-wf.setnchannels(channels)
-wf.setsampwidth(p.get_sample_size(sample_format))
-wf.setframerate(fs)
+wf = wave.open(FILENAME, 'wb')
+wf.setnchannels(CHANNELS)
+wf.setsampwidth(p.get_sample_size(SAMPLE_FORMAT))
+wf.setframerate(SAMPLE_RATE)
 wf.writeframes(b''.join(frames))
 wf.close()
