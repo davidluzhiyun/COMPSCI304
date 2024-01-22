@@ -11,11 +11,13 @@ SAMPLE_FORMAT = pyaudio.paInt16
 CHANNELS = 1
 SAMPLE_RATE = 16000  # or 44100 for Mac users
 FILENAME = "output.wav"
+RECORD_MIN_SECONDS = 2
+RECORD_MIN_SIZE = round(SAMPLE_RATE*RECORD_MIN_SECONDS/FRAME_SIZE)
 
 # Endpointing algorithm parameters
 FORGET_FACTOR = 1.5
 ADJUSTMENT = 0.05
-THRESHOLD = 2
+THRESHOLD = 10
 
 # Calculate the decibel of a frame of data points
 def energy_per_sample_in_decibel(frame):
@@ -55,10 +57,14 @@ print('Recording')
 # Open the stream for recording
 stream = p.open(format=SAMPLE_FORMAT, channels=CHANNELS, rate=SAMPLE_RATE, input=True, frames_per_buffer=FRAME_SIZE)
 
+start_frame = -1
+end_frame = -1
 frames = []
 current_background = 0
 current_level = 0
+previous_isSpeech = False
 current_isSpeech = False
+contain_speech = False
 
 # Record until silence is detected
 while True:
@@ -75,8 +81,20 @@ while True:
         current_isSpeech, current_background, current_level = classify_frame(audioframe, current_background,
                                                                              current_level, FORGET_FACTOR, THRESHOLD,
                                                                              ADJUSTMENT)
+        if not previous_isSpeech and current_isSpeech:
+            previous_isSpeech = True
+            if not contain_speech:
+                start_frame = len(frames) - 1
+                contain_speech = True
+
         if not current_isSpeech:
-            break
+            if previous_isSpeech:
+                end_frame = len(frames)
+                previous_isSpeech = False
+            if len(frames) > RECORD_MIN_SIZE:
+                break
+
+
 
 # Stop and close the stream
 stream.stop_stream()
@@ -92,5 +110,5 @@ wf = wave.open(FILENAME, 'wb')
 wf.setnchannels(CHANNELS)
 wf.setsampwidth(p.get_sample_size(SAMPLE_FORMAT))
 wf.setframerate(SAMPLE_RATE)
-wf.writeframes(b''.join(frames))
+wf.writeframes(b''.join(frames[start_frame:end_frame]))
 wf.close()
