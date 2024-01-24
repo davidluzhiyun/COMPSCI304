@@ -2,33 +2,41 @@ import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
 
+DEFAULT_WINDOW_TYPE = 'hamming'
+
+DEFAULT_PREEMPHASIS_COEFFICIENT = 0.95
+
+HOP_TIME = 0.01
+
+FRAME_TIME = 0.02
+
 
 # Read the .wav File
 def read_wav(file_path):
-    audio, sr = scipy.io.wavfile.read(file_path)
-    return audio, sr
+    sr, data = scipy.io.wavfile.read(file_path)
+    return sr, data
 
 
 # Pre-emphasis
-def preemphasis(signal, coefficient=0.97):
+def preemphasis(signal, coefficient=DEFAULT_PREEMPHASIS_COEFFICIENT):
     emphasized_signal = np.append(signal[0], signal[1:] - coefficient * signal[:-1])
     return emphasized_signal
 
 
 # Windowing
-def apply_window(signal, window_type='hamming'):
+def apply_window(signal, window_type=DEFAULT_WINDOW_TYPE):
     window = scipy.signal.get_window(window_type, len(signal))
     windowed_signal = signal * window
     return windowed_signal
 
 
-# Divide into 20ms Windows
-def divide_into_windows(signal, window_size, hop_size):
-    windows = []
-    for i in range(0, len(signal) - window_size + 1, hop_size):
-        window = signal[i:i + window_size]
-        windows.append(window)
-    return np.array(windows)
+# Divide into 20ms frames
+def divide_into_frames(signal, frame_size, hop_size):
+    frames = []
+    for i in range(0, len(signal) - frame_size + 1, hop_size):
+        frame = signal[i:i + frame_size]
+        frames.append(frame)
+    return np.array(frames)
 
 
 # Zero Padding
@@ -71,34 +79,53 @@ def calculate_cepstra(log_spectra, num_cepstral_coefficients=13):
     return scipy.fftpack.dct(log_spectra, axis=0, type=2, norm='ortho')[:num_cepstral_coefficients]
 
 
+# Plot audio wave form
+def plot_audio(sr, data):
+    # Plotting the file being read
+    length = data.shape[0] / sr
+    time = np.linspace(0., length, data.shape[0])
+    plt.plot(time, data)
+    plt.legend()
+    plt.xlabel("Time [s]")
+    plt.ylabel("Amplitude")
+    plt.show()
+
+
 # Main Code
-FILE_PATH = 'zero.wav'
+FILE_PATH = 'one.wav'
+SR, DATA = read_wav(FILE_PATH)
 
-# Step 3: Read the .wav File
-audio, sr = read_wav(FILE_PATH)
+# Plotting the file being read
+plot_audio(SR, DATA)
 
-# Step 4: Pre-emphasis
-emphasized_audio = preemphasis(audio)
+# Pre-emphasis
+emphasized_audio = preemphasis(DATA)
 
-# Step 5: Windowing
-window_size = int(0.02 * sr)  # 20ms window size
-hop_size = int(0.01 * sr)  # 10ms hop size
-windows = divide_into_windows(emphasized_audio, window_size, hop_size)
-windowed_audio = np.vstack([apply_window(window) for window in windows])
+plot_audio(SR, emphasized_audio)
 
-# Step 6: Zero Padding
-target_length = 1024  # Choose an appropriate value
-padded_audio = zero_padding(windowed_audio, target_length)
+# To frame
+frame_size = int(FRAME_TIME * SR)
+hop_size = int(HOP_TIME * SR)
+frames = divide_into_frames(emphasized_audio, frame_size, hop_size)
+plot_audio(SR, frames[0])
 
-# Step 7: Discrete Fourier Transform (DFT)
-magnitude_spectrum = np.abs(calculate_dft(padded_audio))
+# Windowing
+windowed_audio = np.vstack([apply_window(window) for window in frames])
+plot_audio(SR, windowed_audio[0])
 
-# Step 8: Mel Filter Banks
-n_mels = 40  # Choose an appropriate value
-mel_frequencies = mel_filter_bank(sr, target_length, n_mels)
-
-# Step 9: Log Spectra
-log_spectra = calculate_log_spectra(magnitude_spectrum)
-
-# Step 10: Cepstral Coefficients
-cepstra = calculate_cepstra(log_spectra)
+# # Step 6: Zero Padding
+# target_length = 1024  # Choose an appropriate value
+# padded_audio = zero_padding(windowed_audio, target_length)
+#
+# # Step 7: Discrete Fourier Transform (DFT)
+# magnitude_spectrum = np.abs(calculate_dft(padded_audio))
+#
+# # Step 8: Mel Filter Banks
+# n_mels = 40  # Choose an appropriate value
+# mel_frequencies = mel_filter_bank(sr, target_length, n_mels)
+#
+# # Step 9: Log Spectra
+# log_spectra = calculate_log_spectra(magnitude_spectrum)
+#
+# # Step 10: Cepstral Coefficients
+# cepstra = calculate_cepstra(log_spectra)
