@@ -41,13 +41,16 @@ def divide_into_frames(signal, frame_size, hop_size):
 
 # Zero Padding
 def zero_padding(signal, target_length):
-    padded_signal = np.pad(signal, (0, target_length - len(signal)))
+    assert len(signal) <= target_length
+    padded_signal = np.pad(signal, ((0, 0), (0, target_length - len(signal[0]))))
     return padded_signal
 
 
-# Discrete Fourier Transform (DFT)
+# FFT and truncate
 def calculate_dft(signal):
-    return np.fft.fft(signal)
+    truncated_length = int(len(signal[0])/2) + 1
+    power_spectrum = np.abs(np.fft.fft(signal))[:, :truncated_length]
+    return power_spectrum
 
 
 # Mel Filter Banks
@@ -81,12 +84,20 @@ def calculate_cepstra(log_spectra, num_cepstral_coefficients=13):
 
 # Plot audio wave form
 def plot_audio(sr, data):
-    # Plotting the file being read
     length = data.shape[0] / sr
     time = np.linspace(0., length, data.shape[0])
     plt.plot(time, data)
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
+    plt.show()
+
+
+# Plot power frequency graphs
+def plot_power(max_frequency, data):
+    frequency = np.linspace(0., max_frequency, data.shape[0])
+    plt.plot(frequency, data)
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel("Power")
     plt.show()
 
 
@@ -112,13 +123,15 @@ plot_audio(SR, frames[0])
 windowed_audio = np.vstack([apply_window(window) for window in frames])
 plot_audio(SR, windowed_audio[0])
 
-# # Step 6: Zero Padding
-# target_length = 1024  # Choose an appropriate value
-# padded_audio = zero_padding(windowed_audio, target_length)
-#
-# # Step 7: Discrete Fourier Transform (DFT)
-# magnitude_spectrum = np.abs(calculate_dft(padded_audio))
-#
+# Zero Padding
+target_length = 512
+padded_audio = zero_padding(windowed_audio, target_length)
+plot_audio(SR, padded_audio[0])
+
+# DFT and truncate
+truncated_power_spectrum = calculate_dft(padded_audio)
+plot_power(int(SR/2),truncated_power_spectrum[0])
+
 # # Step 8: Mel Filter Banks
 # n_mels = 40  # Choose an appropriate value
 # mel_frequencies = mel_filter_bank(sr, target_length, n_mels)
