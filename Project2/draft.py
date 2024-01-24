@@ -85,7 +85,6 @@ def plot_audio(sr, data):
     length = data.shape[0] / sr
     time = np.linspace(0., length, data.shape[0])
     plt.plot(time, data)
-    plt.legend()
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
     plt.show()
