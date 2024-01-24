@@ -53,7 +53,7 @@ def divide_into_frames(signal, frame_size, hop_size):
 
 # Zero Padding
 def zero_padding(signal, target_length):
-    assert len(signal) <= target_length
+    assert len(signal[0]) <= target_length
     padded_signal = np.pad(signal, ((0, 0), (0, target_length - len(signal[0]))))
     return padded_signal
 
@@ -167,49 +167,48 @@ def get_spectrograms(filename, name, frame_time = FRAME_TIME, hop_time = HOP_TIM
     return
 
 
-# Main Code
-FILE_PATH = 'one.wav'
-SR, DATA = read_wav(FILE_PATH)
-
-# Plotting the file being read
-plot_audio(SR, DATA)
-
-# Pre-emphasis
-emphasized_audio = preemphasis(DATA)
-
-plot_audio(SR, emphasized_audio)
-
-# To frame
-frame_size = int(FRAME_TIME * SR)
-hop_size = int(HOP_TIME * SR)
-frames = divide_into_frames(emphasized_audio, frame_size, hop_size)
-plot_audio(SR, frames[0])
-
-# Windowing
-windowed_audio = np.vstack([apply_window(window) for window in frames])
-plot_audio(SR, windowed_audio[0])
-
-# Zero Padding
-target_length = FFT_TARGET_LENGTH
-padded_audio = zero_padding(windowed_audio, target_length)
-plot_audio(SR, padded_audio[0])
-
-# DFT and truncate
-truncated_power_spectrum = calculate_dft(padded_audio)
-plot_power(int(SR/2), truncated_power_spectrum[0])
-
-# Mel filtering
-banks = mel_filter_bank(NUM_FILTERS, FFT_TARGET_LENGTH, SR, LOW_FREQ, HIGH_FREQ)
-mel_spectra = np.dot(truncated_power_spectrum, banks.T)
-plt.plot(mel_spectra[0])
-plt.show()
-
-
-# Log Spectra and plot
-mel_log_spectra = calculate_log_spectra(mel_spectra)
-plot_spectrogram(mel_log_spectra, "Mel Log Spectrogram")
-
-# ceptra and IDCT derived logspectrum
-print(calculate_cepstra(mel_log_spectra).shape)
-IDCT_log_spectrogram = inverse_discrete_cosine_transform(calculate_cepstra(mel_log_spectra), IDCT_PADDED_LENGTH)
-plot_spectrogram(IDCT_log_spectrogram, "IDCT-derived Log Spectrogram")
+# # Main Code
+# FILE_PATH = 'one.wav'
+# SR, DATA = read_wav(FILE_PATH)
+#
+# # Plotting the file being read
+# plot_audio(SR, DATA)
+#
+# # Pre-emphasis
+# emphasized_audio = preemphasis(DATA)
+#
+# plot_audio(SR, emphasized_audio)
+#
+# # To frame
+# frame_size = int(FRAME_TIME * SR)
+# hop_size = int(HOP_TIME * SR)
+# frames = divide_into_frames(emphasized_audio, frame_size, hop_size)
+# plot_audio(SR, frames[0])
+#
+# # Windowing
+# windowed_audio = np.vstack([apply_window(window) for window in frames])
+# plot_audio(SR, windowed_audio[0])
+#
+# # Zero Padding
+# target_length = FFT_TARGET_LENGTH
+# padded_audio = zero_padding(windowed_audio, target_length)
+# plot_audio(SR, padded_audio[0])
+#
+# # DFT and truncate
+# truncated_power_spectrum = calculate_dft(padded_audio)
+# plot_power(int(SR/2), truncated_power_spectrum[0])
+#
+# # Mel filtering
+# banks = mel_filter_bank(NUM_FILTERS, FFT_TARGET_LENGTH, SR, LOW_FREQ, HIGH_FREQ)
+# mel_spectra = np.dot(truncated_power_spectrum, banks.T)
+# plt.plot(mel_spectra[0])
+# plt.show()
+#
+#
+# # Log Spectra and plot
+# mel_log_spectra = calculate_log_spectra(mel_spectra)
+# plot_spectrogram(mel_log_spectra, "Mel Log Spectrogram")
+#
+# # ceptra and IDCT derived logspectrum
+# IDCT_log_spectrogram = inverse_discrete_cosine_transform(calculate_cepstra(mel_log_spectra), IDCT_PADDED_LENGTH)
+# plot_spectrogram(IDCT_log_spectrogram, "IDCT-derived Log Spectrogram")
