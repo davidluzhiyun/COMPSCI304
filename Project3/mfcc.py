@@ -117,6 +117,23 @@ def inverse_discrete_cosine_transform(cepstra, padded_length):
     cepstra_padded = zero_padding(cepstra, padded_length)
     return scipy.fftpack.idct(cepstra_padded, type=2, axis=1)
 
+# Taking delta
+# assume delta(0) = delta(1) delta(-1) = delta(-2) for boundaries
+def delta_features(features):
+    # Calculate delta for the interior frames
+    delta_interior = features[2:] - features[:-2]
+
+    # Calculate delta for the first frame
+    delta_first = features[1] - features[0]
+
+    # Calculate delta for the last frame
+    delta_last = features[-1] - features[-2]
+
+    # Combine delta for all frames
+    delta = np.vstack([delta_first, delta_interior, delta_last])
+
+    return delta
+
 
 # Plot audio wave form
 def plot_audio(sr, data):
@@ -145,7 +162,7 @@ def plot_spectrogram(spectrogram, name):
     plt.show()
 
 # integrated process for files
-def get_spectrograms(filename, frame_time = FRAME_TIME, hop_time = HOP_TIME, window_type = DEFAULT_WINDOW_TYPE, fft_target_length = FFT_TARGET_LENGTH, num_filters = NUM_FILTERS, low_frequency = LOW_FREQ, high_frequency = HIGH_FREQ, num_cepstral_coefficients=DEFAULT_NUM_FEATURES, IDCT_padded_length = IDCT_PADDED_LENGTH):
+def extract_feature(filename, frame_time = FRAME_TIME, hop_time = HOP_TIME, window_type = DEFAULT_WINDOW_TYPE, fft_target_length = FFT_TARGET_LENGTH, num_filters = NUM_FILTERS, low_frequency = LOW_FREQ, high_frequency = HIGH_FREQ, num_cepstral_coefficients=DEFAULT_NUM_FEATURES, IDCT_padded_length = IDCT_PADDED_LENGTH):
     sr, data = read_wav(filename)
 
     # Pre-emphasis
@@ -175,6 +192,8 @@ def get_spectrograms(filename, frame_time = FRAME_TIME, hop_time = HOP_TIME, win
     # cepstra
     cepstra = calculate_cepstra(mel_log_spectra, num_cepstral_coefficients)
     normalized_cepstra = normalize_features(cepstra)
+    delta1 = delta_features(normalized_cepstra)
+    delta2 = delta_features(delta1)
 
     # # Tested such that result similar to librosa under these parameters
     # # difference in length comes from  difference between scipy.io.wavfile.read() and librosa.load()
@@ -188,10 +207,15 @@ def get_spectrograms(filename, frame_time = FRAME_TIME, hop_time = HOP_TIME, win
     # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(cepstra), padded_length=IDCT_padded_length),"my")
     # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(cepstra2.T), padded_length=IDCT_padded_length),"lib")
 
+    normalized_cepstra = normalize_features(cepstra)
+
     # Test normalization
     # plot_spectrogram(inverse_discrete_cosine_transform(cepstra, padded_length=IDCT_padded_length),"my")
     # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(cepstra), padded_length=IDCT_padded_length),"lib")
 
-    return
+    delta1 = delta_features(normalized_cepstra)
+    delta2 = delta_features(delta1)
 
-get_spectrograms("one.wav")
+    extracted_features = np.hstack([normalized_cepstra, delta1, delta2])
+
+    return extracted_features
