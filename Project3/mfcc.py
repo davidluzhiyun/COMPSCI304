@@ -172,25 +172,25 @@ def get_spectrograms(filename, frame_time = FRAME_TIME, hop_time = HOP_TIME, win
     # Log Spectra
     mel_log_spectra = calculate_log_spectra(mel_spectra)
 
-    # ceptra
-    ceptra = calculate_cepstra(mel_log_spectra, num_cepstral_coefficients)
-    normalized_ceptra = normalize_features(ceptra)
+    # cepstra
+    cepstra = calculate_cepstra(mel_log_spectra, num_cepstral_coefficients)
+    normalized_cepstra = normalize_features(cepstra)
 
     # # Tested such that result similar to librosa under these parameters
     # # difference in length comes from  difference between scipy.io.wavfile.read() and librosa.load()
     # # Also result is transposed comparing to each other
     # # For ours: axis 0: frames, axis 1: features
-    # ceptra2 = librosa.feature.mfcc(y=librosa.load(filename)[0], sr=librosa.load(filename)[1], n_mfcc=13, norm=None,n_fft=FFT_TARGET_LENGTH, hop_length=frame_size//2, win_length=frame_size, window=DEFAULT_WINDOW_TYPE, center=False, power=10)
+    # cepstra2 = librosa.feature.mfcc(y=librosa.load(filename)[0], sr=librosa.load(filename)[1], n_mfcc=13, norm=None,n_fft=FFT_TARGET_LENGTH, hop_length=frame_size//2, win_length=frame_size, window=DEFAULT_WINDOW_TYPE, center=False, power=10)
     #
-    # plot_spectrogram(ceptra, "my")
-    # plot_spectrogram(ceptra2.T, "lib")
+    # plot_spectrogram(cepstra, "my")
+    # plot_spectrogram(cepstra2.T, "lib")
     #
-    # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(ceptra), padded_length=IDCT_padded_length),"my")
-    # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(ceptra2.T), padded_length=IDCT_padded_length),"lib")
+    # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(cepstra), padded_length=IDCT_padded_length),"my")
+    # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(cepstra2.T), padded_length=IDCT_padded_length),"lib")
 
     # Test normalization
-    # plot_spectrogram(inverse_discrete_cosine_transform(ceptra, padded_length=IDCT_padded_length),"my")
-    # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(ceptra), padded_length=IDCT_padded_length),"lib")
+    # plot_spectrogram(inverse_discrete_cosine_transform(cepstra, padded_length=IDCT_padded_length),"my")
+    # plot_spectrogram(inverse_discrete_cosine_transform(normalize_features(cepstra), padded_length=IDCT_padded_length),"lib")
 
     return
 
