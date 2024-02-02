@@ -161,7 +161,8 @@ def plot_spectrogram(spectrogram, name):
     plt.title(name)
     plt.show()
 
-# integrated process for files
+# Extra feature, delta feature and double delta feature (each occupying 1/3 in this order)
+# axis 0 for frames axis 1 for features
 def extract_feature(filename, frame_time = FRAME_TIME, hop_time = HOP_TIME, window_type = DEFAULT_WINDOW_TYPE, fft_target_length = FFT_TARGET_LENGTH, num_filters = NUM_FILTERS, low_frequency = LOW_FREQ, high_frequency = HIGH_FREQ, num_cepstral_coefficients=DEFAULT_NUM_FEATURES, IDCT_padded_length = IDCT_PADDED_LENGTH):
     sr, data = read_wav(filename)
 
