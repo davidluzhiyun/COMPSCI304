@@ -137,5 +137,5 @@ def update_pruning(p, i, n, b, threshold):
 def in_trellis(item, i, m, n):
     return max(0, m - 2 * (n - i - 1) - 1) <= item < min(m, 2 * i + 1)
 
-print(dtw_synchronous_pruning(feature_extraction.extract_feature("three2.wav"), [feature_extraction.extract_feature("three.wav"), feature_extraction.extract_feature("two.wav")], 10))
+# print(dtw_synchronous_pruning(feature_extraction.extract_feature("three2.wav"), [feature_extraction.extract_feature("three.wav"), feature_extraction.extract_feature("two.wav")], 10))
 
