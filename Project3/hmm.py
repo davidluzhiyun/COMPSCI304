@@ -7,9 +7,11 @@ import feature_extraction
 def uniform_segmentation(template, k):
     num_frames, num_features = template.shape
     segment_length = num_frames // k
+    remainder = num_frames % k
 
-    # Create labels based on uniform segmentation
-    labels = np.concatenate([np.full(segment_length, i) for i in range(k)])
+    # Create labels based on uniform segmentation with equal distribution of remaining frames
+    labels = np.concatenate([np.full(segment_length + (1 if i < remainder else 0), i) for i in range(k)])
+
     return labels
 
 
@@ -79,13 +81,86 @@ def create_node_cost_functions_mahalanobis(means, covariances):
 
     return alignment_cost_functions
 
-def segmental_k_means(templates, num_segments, max_iterations=100):
+
+# perform alignment for one template
+def viterbi_alignment(template, alignment_cost_functions, state_transition_scores, entrance_scores):
+    num_states = len(alignment_cost_functions)
+    num_frames, num_features = template.shape
+
+    # Initialize matrices
+    viterbi_matrix = np.full((num_frames, num_states), np.inf)
+    backtrack_matrix = np.zeros((num_frames, num_states),dtype=int)
+
+    # Initialize the first column of the Viterbi matrix
+    for state in range(num_states):
+        viterbi_matrix[0, state] = entrance_scores[state] + alignment_cost_functions[state](template[0])
+
+    # Forward pass: Fill in the Viterbi matrix
+    for i in range(1, num_frames):
+        for j in range(num_states):
+            c = alignment_cost_functions[j](template[i])
+            # Alows skipping 1 state
+            # Special cases for j = 0 and 1
+            if j == 0:
+                p = viterbi_matrix[i - 1, j] + state_transition_scores[j, j] + c
+                backtrack_matrix[i,j] = 0
+            elif j == 1:
+                potential_prev = np.array([viterbi_matrix[i - 1, j] + state_transition_scores[j, j],
+                        viterbi_matrix[i - 1, j - 1] + state_transition_scores[j - 1, j]])
+                prev_path = np.argmin(potential_prev)
+                backtrack_matrix[i,j] = j - prev_path
+                p = potential_prev[prev_path] + c
+
+            else:
+                potential_prev = np.array([viterbi_matrix[i - 1, j] + state_transition_scores[j, j],
+                        viterbi_matrix[i - 1, j - 1] + state_transition_scores[j-1, j]
+                        ,viterbi_matrix[i - 1, j - 2] + state_transition_scores[j-2, j]])
+                prev_path = np.argmin(potential_prev)
+                backtrack_matrix[i, j] = j - prev_path
+                p = potential_prev[prev_path] + c
+            viterbi_matrix[i, j] = p
+
+    # Backward pass: Find the best path
+    best_path = [np.argmin(viterbi_matrix[-1])]
+    for frame in range(num_frames - 1, 0, -1):
+        best_path.append(backtrack_matrix[frame, best_path[-1]])
+
+    best_path.reverse()
+
+    # Calculate total cost
+    total_cost = np.min(viterbi_matrix[-1])
+
+    return np.array(best_path), total_cost
+
+def segmental_k_means(templates, num_segments, max_iterations=100, epsilon = 0.001):
     # Initialize with uniform segmentation
     segmentations = [uniform_segmentation(template, num_segments) for template in templates]
-    means, covariances = calculate_segments_means_covariances(templates,segmentations, num_segments)
+    # initialize total cost as inf
+    total_cost = np.inf
+    for i in range(max_iterations):
 
-# # Example usage:
-# k = 3
+        means, covariances = calculate_segments_means_covariances(templates,segmentations, num_segments)
+        state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
+        node_cost_funtions = create_node_cost_functions_mahalanobis(means, covariances)
+        labels_and_costs =[viterbi_alignment(template, node_cost_funtions,state_transition_scores,entrance_scores) for template in templates]
+        new_total_cost = 0
+        new_labels = []
+        for label,cost in labels_and_costs:
+            new_labels.append(label)
+            new_total_cost += cost
+        improvement = total_cost - new_total_cost
+        total_cost = new_total_cost
+        segmentations = new_labels
+        if improvement >= 0 and improvement<epsilon:
+            break
+    means, covariances = calculate_segments_means_covariances(templates, segmentations, num_segments)
+    node_cost_functions = create_node_cost_functions_mahalanobis(means, covariances)
+    state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
+    return node_cost_functions, state_transition_scores, entrance_scores
+
+
+# Example usage:
+# k = 5
 # templates = [feature_extraction.extract_feature('three.wav'),feature_extraction.extract_feature('three2.wav')]
 # labels_list = [uniform_segmentation(template, k) for template in templates]
 # # Assuming means and covariances are obtained from the previous steps
@@ -101,3 +176,9 @@ def segmental_k_means(templates, num_segments, max_iterations=100):
 # for segment, cost_function in enumerate(alignment_cost_functions):
 #     cost = cost_function(sample_feature_vector)
 #     print(f"Segment {segment + 1} Alignment Cost: {cost}")
+# # Test the alignment
+# state_transition_costs, entrance_costs = calculate_state_transition_entrance_costs(labels_list, k)
+#
+# new_labels, total_cost = viterbi_alignment(templates[0], alignment_cost_functions, state_transition_costs,entrance_costs)
+# new_labels, total_cost = viterbi_alignment(templates[1], alignment_cost_functions, state_transition_costs,entrance_costs)
+# print(new_labels)
