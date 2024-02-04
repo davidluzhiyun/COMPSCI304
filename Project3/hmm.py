@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import multivariate_normal
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 
@@ -47,7 +48,7 @@ def create_kmeans_objects(templates, labels, segment_count, k_clusters):
             [template[np.where(label == segment)[0]] for template, label in zip(templates, labels)])
 
         # Perform k-means clustering
-        kmeans = KMeans(n_clusters=k_clusters)
+        kmeans = KMeans(n_clusters=min(k_clusters,len(segment_frames)))
         kmeans.fit(segment_frames)
 
         # Save the resulting k-means object
@@ -56,36 +57,49 @@ def create_kmeans_objects(templates, labels, segment_count, k_clusters):
     return kmeans_objects
 
 
-# Reconstruct the distribution of the states from k-means using gmm
-def create_gmm_objects(kmeans_objects, num_components=1):
-    gmm_objects = []
+# Create GMM parameters from the kmeans results
+def create_gmm_parameters(kmeans_objects):
+    gmm_parameters = []
 
     for kmeans in kmeans_objects:
-        # Use k-means cluster centers and variances to initialize a GMM
-        gmm = GaussianMixture(n_components=num_components, covariance_type='diag',
-                              weights_init=[1 / num_components] * num_components)
-
         # Extract cluster centers and variances from k-means
         cluster_centers = kmeans.cluster_centers_
         variances = np.var(kmeans.transform(cluster_centers), axis=1)
 
-        # Initialize GMM components
-        gmm.means_ = cluster_centers
-        gmm.covariances_ = np.diag(variances)
+        # Calculate weights based on the size of k-means clusters
+        weights = np.array([np.sum(kmeans.labels_ == i) / len(kmeans.labels_) for i in range(len(kmeans.cluster_centers_))])
 
-        gmm_objects.append(gmm)
+        # Save GMM parameters
+        gmm_parameters.append((cluster_centers, variances, weights))
 
-    return gmm_objects
+    return gmm_parameters
 
+# template function for calculating cost
+def calculate_node_cost(feature_vector, gmm_parameters):
+    total_cost = 0
+
+    cluster_centers, variances, weights = gmm_parameters
+    for i in range(len(cluster_centers)):
+        mean = cluster_centers[i]
+        variance = variances[i]
+        weight = weights[i]
+        # Calculate the multivariate normal log probability
+        prob = multivariate_normal.pdf(feature_vector, mean=mean, cov=variance)
+
+        # Accumulate the cost with weights
+        total_cost += weight * prob
+
+    return -np.log(total_cost)
 
 # calculated the
-def create_node_cost_functions_GMM(gmm_objects):
+# Create node cost functions for GMMs
+def create_node_cost_functions_GMM(gmm_parameters_list):
     node_score_functions = []
 
-    for gmm in gmm_objects:
-        # Again, prevent late bind
-        def node_score(feature_vector, gmm=gmm):
-            return -gmm.score_samples(feature_vector.reshape(1, -1))[0]
+    for gmm_parameters in gmm_parameters_list:
+        # Prevent late bind
+        def node_score(feature_vector, gmm_parameters=gmm_parameters):
+            return calculate_node_cost(feature_vector, gmm_parameters)
 
         node_score_functions.append(node_score)
 
@@ -223,11 +237,10 @@ def segmental_k_means_with_gmm(templates, num_segments, number_of_gmm_clusters, 
     # initialize total cost as inf
     total_cost = np.inf
     for i in range(max_iterations):
-
         kmeans = create_kmeans_objects(templates,segmentations, num_segments, number_of_gmm_clusters)
-        gmms = create_gmm_objects(kmeans)
+        gmms_parameters = create_gmm_parameters(kmeans)
+        node_cost_funtions = create_node_cost_functions_GMM(gmms_parameters)
         state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
-        node_cost_funtions = create_node_cost_functions_GMM(gmms)
         labels_and_costs =[viterbi_alignment(template, node_cost_funtions,state_transition_scores,entrance_scores) for template in templates]
         new_total_cost = 0
         new_labels = []
@@ -246,28 +259,6 @@ def segmental_k_means_with_gmm(templates, num_segments, number_of_gmm_clusters, 
 
 
 # Example usage:
-# k = 5
-# templates = [feature_extraction.extract_feature('three.wav'),feature_extraction.extract_feature('three2.wav')]
-# labels_list = [uniform_segmentation(template, k) for template in templates]
-# # Assuming means and covariances are obtained from the previous steps
-# means, covariances = calculate_segments_means_covariances(templates, labels_list, k)
-#
-# print(means.shape)
-# print(covariances.shape)
-# # Create alignment cost functions
-# alignment_cost_functions = create_node_cost_functions_mahalanobis(means, covariances)
-# print(len(alignment_cost_functions))
-# # Test the alignment cost functions with a sample feature vector
-# sample_feature_vector = np.random.rand(39)  # Replace with your own feature vector
-# for segment, cost_function in enumerate(alignment_cost_functions):
-#     cost = cost_function(sample_feature_vector)
-#     print(f"Segment {segment + 1} Alignment Cost: {cost}")
-# # Test the alignment
-# state_transition_costs, entrance_costs = calculate_state_transition_entrance_costs(labels_list, k)
-#
-# new_labels, total_cost = viterbi_alignment(templates[0], alignment_cost_functions, state_transition_costs,entrance_costs)
-# new_labels, total_cost = viterbi_alignment(templates[1], alignment_cost_functions, state_transition_costs,entrance_costs)
-# print(new_labels)viterbi_alignment(feature_extraction.extract_feature('three_PengWang.wav')
 templates = [feature_extraction.extract_feature('three.wav'),feature_extraction.extract_feature('three2.wav')]
 
 node_cost, state_transition, entrance = segmental_k_means(templates,5)
@@ -279,13 +270,38 @@ labels1, cost1 = viterbi_alignment(feature_extraction.extract_feature('three_Pen
 
 labels2, cost2 = viterbi_alignment(feature_extraction.extract_feature('two.wav'), node_cost, state_transition, entrance)
 
-labels3, cost3 = viterbi_alignment(feature_extraction.extract_feature('three_PengWang.wav'), node_cost, state_transition
-                                   , entrance)
+labels3, cost3 = viterbi_alignment(feature_extraction.extract_feature('three_PengWang.wav'), node_cost_gmm, state_transition_gmm
+                                   , entrance_gmm)
 
-labels4, cost4 = viterbi_alignment(feature_extraction.extract_feature('two.wav'), node_cost, state_transition, entrance)
+labels4, cost4 = viterbi_alignment(feature_extraction.extract_feature('two.wav'), node_cost_gmm, state_transition_gmm, entrance_gmm)
 
 print(labels1)
 print(cost1)
 print(labels2)
 print(cost2)
+print(labels3)
+print(cost3)
+print(labels4)
+print(cost4)
 
+# results
+# Warning GMM  has terrible performance
+#
+# Warning Chang of GMM stopping to run because segment length drops to zero
+# I am not sure how to handle that
+# [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+#  1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4
+#  4 4 4 4 4 4 4 4 4 4 4 4 4 4]
+# 2496.96864093495
+# [0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+#  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+#  2 2 2 2 2 3 4 4 4 4 4 4 4 4]
+# 2296.3166349335183
+# [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+#  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+#  0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+# nan
+# [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+#  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+#  0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+# nan
