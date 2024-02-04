@@ -132,6 +132,7 @@ def viterbi_alignment(template, alignment_cost_functions, state_transition_score
 
     return np.array(best_path), total_cost
 
+
 def segmental_k_means(templates, num_segments, max_iterations=100, epsilon = 0.001):
     # Initialize with uniform segmentation
     segmentations = [uniform_segmentation(template, num_segments) for template in templates]
@@ -181,4 +182,17 @@ def segmental_k_means(templates, num_segments, max_iterations=100, epsilon = 0.0
 #
 # new_labels, total_cost = viterbi_alignment(templates[0], alignment_cost_functions, state_transition_costs,entrance_costs)
 # new_labels, total_cost = viterbi_alignment(templates[1], alignment_cost_functions, state_transition_costs,entrance_costs)
-# print(new_labels)
+# print(new_labels)viterbi_alignment(feature_extraction.extract_feature('three_PengWang.wav')
+templates = [feature_extraction.extract_feature('three.wav'),feature_extraction.extract_feature('three2.wav')]
+node_cost, state_transition, entrance = segmental_k_means(templates,5)
+
+labels1, cost1 = viterbi_alignment(feature_extraction.extract_feature('three_PengWang.wav'), node_cost, state_transition
+                                   , entrance)
+
+labels2, cost2 = viterbi_alignment(feature_extraction.extract_feature('two.wav'), node_cost, state_transition, entrance)
+
+print(labels1)
+print(cost1)
+print(labels2)
+print(cost2)
+
