@@ -82,3 +82,20 @@ def segmental_k_means(templates, num_segments, max_iterations=100):
     segmentations = [uniform_segmentation(template, num_segments) for template in templates]
     means, covariances = calculate_segments_means_covariances(templates,segmentations, num_segments)
 
+# # Example usage:
+# k = 3
+# templates = [np.random.rand(100, 39) for _ in range(10)]  # Replace with your own templates
+# labels_list = [uniform_segmentation(template, k) for template in templates]
+# # Assuming means and covariances are obtained from the previous steps
+# means, covariances = calculate_segments_means_covariances(templates, labels_list, k)
+#
+# print(means.shape)
+# print(covariances.shape)
+# # Create alignment cost functions
+# alignment_cost_functions = create_node_cost_functions_mahalanobis(means, covariances)
+# print(len(alignment_cost_functions))
+# # Test the alignment cost functions with a sample feature vector
+# sample_feature_vector = np.random.rand(39)  # Replace with your own feature vector
+# for segment, cost_function in enumerate(alignment_cost_functions):
+#     cost = cost_function(sample_feature_vector)
+#     print(f"Segment {segment + 1} Alignment Cost: {cost}")
