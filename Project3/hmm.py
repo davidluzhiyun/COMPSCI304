@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.cluster import KMeans
+import feature_extraction
 
 # initialization of segmentation for one template
 # a template is a numpy array with axis0 for frames and axis1 for features
@@ -68,7 +69,8 @@ def create_node_cost_functions_mahalanobis(means, covariances):
         mean = means[segment]
         covariance_inv = np.linalg.inv(covariances[segment])
 
-        def alignment_cost(feature_vector):
+        # written as default value to prevent late binding
+        def alignment_cost(feature_vector, mean=mean, covariance_inv=covariance_inv):
             diff = feature_vector - mean
             mahalanobis_distance = np.sqrt(np.dot(np.dot(diff, covariance_inv), diff.T))
             return mahalanobis_distance
@@ -84,7 +86,7 @@ def segmental_k_means(templates, num_segments, max_iterations=100):
 
 # # Example usage:
 # k = 3
-# templates = [np.random.rand(100, 39) for _ in range(10)]  # Replace with your own templates
+# templates = [feature_extraction.extract_feature('three.wav'),feature_extraction.extract_feature('three2.wav')]
 # labels_list = [uniform_segmentation(template, k) for template in templates]
 # # Assuming means and covariances are obtained from the previous steps
 # means, covariances = calculate_segments_means_covariances(templates, labels_list, k)
