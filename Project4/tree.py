@@ -145,6 +145,7 @@ class TreeSearcher:
             if node.is_end_of_word and self.resultDict[node] <= min_cost:
                 min_cost = self.resultDict[node]
                 min_node = node
+        self.min_cost = min_cost
         # back tracking
         if min_node is None:
             return None
