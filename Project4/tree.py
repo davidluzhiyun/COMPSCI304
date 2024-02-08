@@ -152,6 +152,12 @@ class TreeSearcher:
         while current_node != self.tree.root:
             found_word += current_node.char
             current_node = current_node.parent
+        # reset
+        # initialized with all nodes (simulating after comparing '*' with root)
+        self.workList = [i for i in range(len(self.tree.traversal_list))]
+        # simulating after comparing '*' with root
+        self.resultDict = dict()
+        self.resultDict[self.tree.root] = 0
         return found_word[::-1]
 
 # my_tree = LexicalTree()
