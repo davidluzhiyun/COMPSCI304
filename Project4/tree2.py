@@ -18,6 +18,7 @@ class LexicalTree:
         self.traversal_list = [self.root]
         # each node remembers their position
         self.root.id = 0
+        self.leaf_list = []
 
     def add_word(self, word):
         current_node = self.root
@@ -45,6 +46,8 @@ class LexicalTree:
             # add new_node to the list
             new_node.id = len(self.traversal_list)
             self.traversal_list.append(new_node)
+            # add also to the leaf_list to assist building of loopy list
+            self.leaf_list.append(new_node)
 
     def construct_lexical_tree(self, file_path):
         with open(file_path, 'r') as file:
@@ -52,32 +55,24 @@ class LexicalTree:
                 word = line.strip()
                 self.add_word(word)
 
+    def make_loopy(self):
+        self.loopy = True
+        for leaf in self.leaf_list:
+            new_node = Node('')
+            new_node.children = self.root.children
+            # add parent
+            new_node.parent = leaf
+            # add new_node to the list
+            new_node.id = len(self.traversal_list)
+            self.traversal_list.append(new_node)
+            # add
+
+
     def get_children_indices(self, node):
         return [child.id for child in node.children.values()]
 
-# # Test for the tree
-# tree = LexicalTree()
-# tree.add_word("a")
-# tree.add_word("apple")
-# tree.add_word("app")
-# for node in tree.traversal_list:
-#     print(node.char)
-#     print(node.id)
-#     if node.parent is not None:
-#         print(node.parent.char)
-#     else:
-#         print()
-#     print(node.is_end_of_word)
-#     print(node.children)
-#     print()
-# print(tree.traversal_list[0].children[('a', False)].char)
-# print()
-# print(tree.get_children_indices(tree.root))
-# print(tree.get_children_indices(tree.root.children[('a', True)]))
-
-
 class TreeSearcher:
-    def __init__(self, tree, beamWidth=3):
+    def __init__(self, tree, beamWidth=3, trans_penalty=0.5):
         assert isinstance(tree, LexicalTree)
         self.tree = tree
         self.beamWidth = beamWidth
@@ -87,6 +82,7 @@ class TreeSearcher:
         # simulating after comparing '*' with root
         self.resultDict = dict()
         self.resultDict[self.tree.root] = 0
+        self.trans_penalty = 0.5
 
     # auxiliary function for handling lookup of previous path cost if the node isn't in the resultDict
     def retrieve_path_cost(self, node, my_result):
@@ -103,6 +99,10 @@ class TreeSearcher:
             return 0
         else:
             return 1
+
+    # deal with root in worklist
+    def search(self,char)
+
     # Update the worklist, add all ids of nodes in resultDict that aren't prune away and their children
     def update_workList(self):
         # initialize new set
@@ -114,6 +114,9 @@ class TreeSearcher:
             if self.resultDict[node] <= threshold:
                 target_set.update(self.tree.get_children_indices(node))
                 target_set.add(node.id)
+            # if contains leaf, add in the root
+                if node.is_end_of_word:
+                    target_set.add(0)
         # convert set to sorted list and update
         self.workList = sorted(target_set)
 
@@ -161,11 +164,6 @@ class TreeSearcher:
         self.resultDict[self.tree.root] = 0
         return found_word[::-1]
 
-# my_tree = LexicalTree()
-# my_tree.construct_lexical_tree('dict_1.txt')
-# my_searcher = TreeSearcher(my_tree)
-# print(my_searcher.word_lookup('ccological'))
-# print(my_searcher.word_lookup('ecologica'))
 
 
 
