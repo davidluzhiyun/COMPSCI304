@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 from sklearn.cluster import KMeans
-from sklearn.mixture import GaussianMixture
 
 import feature_extraction
 
@@ -119,22 +118,26 @@ def calculate_state_transition_entrance_costs(labels, k):
     # Initialize count matrices
     transition_counts = np.zeros((k, k))
     entrance_counts = np.zeros(k)
+    exit_counts = np.zeros(k)
 
     # Count transitions and entrances
     for label_sequence in labels:
         for i in range(len(label_sequence) - 1):
             transition_counts[label_sequence[i], label_sequence[i + 1]] += 1
         entrance_counts[label_sequence[0]] += 1
+        exit_counts[label_sequence[-1]] += 1
 
     # Calculate probabilities
     state_transition_probs = transition_counts / np.sum(transition_counts, axis=1, keepdims=True)
     entrance_probs = entrance_counts / np.sum(entrance_counts)
+    exit_probs = exit_counts / np.sum(exit_counts)
 
     # Convert probabilities to minus log probabilities
     state_transition_scores = -np.log(state_transition_probs)
     entrance_scores = -np.log(entrance_probs)
+    exit_scores = -np.log(exit_probs)
 
-    return state_transition_scores, entrance_scores
+    return state_transition_scores, entrance_scores, exit_scores
 
 
 # create the node cost functions for the segments
@@ -199,8 +202,13 @@ def viterbi_alignment(template, alignment_cost_functions, state_transition_score
             viterbi_matrix[i, j] = p
 
     # Backward pass: Find the best path
-    # Made change based on project3 feed back, forcing alignment to end with final state
-    best_path = [num_states - 1]
+    # Made changes such that alignment could end with final state or the state before the finale state
+    # assert num_states>=2
+    if viterbi_matrix[-1][num_states-1] >= viterbi_matrix[-1][num_states-2]:
+        best_path = [num_states - 1]
+    else:
+        best_path = [num_states - 2]
+
     for frame in range(num_frames - 1, 0, -1):
         best_path.append(backtrack_matrix[frame, best_path[-1]])
 
@@ -208,12 +216,14 @@ def viterbi_alignment(template, alignment_cost_functions, state_transition_score
 
 
     # Calculate total cost
-    total_cost = viterbi_matrix[-1][-1]
+    total_cost = viterbi_matrix[-1, -1]
 
     return np.array(best_path), total_cost
 
 
 def segmental_k_means(templates, num_segments, max_iterations=100, epsilon=0.001):
+    # assertion to make sure the new exit costs feature works properly
+    assert num_segments >= 2
     # Initialize with uniform segmentation
     segmentations = [uniform_segmentation(template, num_segments) for template in templates]
     # initialize total cost as inf
@@ -221,7 +231,7 @@ def segmental_k_means(templates, num_segments, max_iterations=100, epsilon=0.001
     for i in range(max_iterations):
 
         means, covariances = calculate_segments_means_covariances(templates, segmentations, num_segments)
-        state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations,
+        state_transition_scores, entrance_scores, exit_scores = calculate_state_transition_entrance_costs(segmentations,
                                                                                              num_segments)
         node_cost_funtions = create_node_cost_functions_mahalanobis(means, covariances)
         labels_and_costs = [viterbi_alignment(template, node_cost_funtions, state_transition_scores, entrance_scores)
@@ -238,20 +248,20 @@ def segmental_k_means(templates, num_segments, max_iterations=100, epsilon=0.001
             break
     means, covariances = calculate_segments_means_covariances(templates, segmentations, num_segments)
     node_cost_functions = create_node_cost_functions_mahalanobis(means, covariances)
-    state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
-    return node_cost_functions, state_transition_scores, entrance_scores
+    state_transition_scores, entrance_scores, exit_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
+    return node_cost_functions, state_transition_scores, entrance_scores, exit_scores, segmentations
 
 
 def segmental_k_means_with_gmm(templates, num_segments, number_of_gmm_clusters, max_iterations=100, epsilon=0.001):
-    # Initialize with uniform segmentation
-    segmentations = [uniform_segmentation(template, num_segments) for template in templates]
+    # Initialize with segmental kmeans of 1 gaussian
+    segmentations = segmental_k_means(templates,num_segments, max_iterations, epsilon)[-1]
     # initialize total cost as inf
     total_cost = np.inf
     for i in range(max_iterations):
         kmeans = create_kmeans_objects(templates, segmentations, num_segments, number_of_gmm_clusters)
         gmms_parameters = create_gmm_parameters(kmeans)
         node_cost_funtions = create_node_cost_functions_GMM(gmms_parameters)
-        state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations,
+        state_transition_scores, entrance_scores, exit_scores = calculate_state_transition_entrance_costs(segmentations,
                                                                                              num_segments)
         labels_and_costs = [viterbi_alignment(template, node_cost_funtions, state_transition_scores, entrance_scores)
                             for template in templates]
@@ -267,5 +277,5 @@ def segmental_k_means_with_gmm(templates, num_segments, number_of_gmm_clusters, 
             break
     means, covariances = calculate_segments_means_covariances(templates, segmentations, num_segments)
     node_cost_functions = create_node_cost_functions_mahalanobis(means, covariances)
-    state_transition_scores, entrance_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
-    return node_cost_functions, state_transition_scores, entrance_scores
+    state_transition_scores, entrance_scores, exit_scores = calculate_state_transition_entrance_costs(segmentations, num_segments)
+    return node_cost_functions, state_transition_scores, entrance_scores, segmentations
