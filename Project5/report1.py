@@ -16,6 +16,11 @@ def train_digit(digit):
 # the hmm parameters from the segmental kmeans for the digits
 digit_parameters = [train_digit(digit) for digit in DIGITS]
 
+# the hmm parameters for silence
+silence_node_cost_functions, silence_state_transition_scores, silence_entrance_scores, silence_exit_scores, silence_segmentations = segmental_k_means(
+    [feature_extraction.extract_feature(DATA_PATH + 'silence.wav')], 2)
+
+silence_parameters = silence_node_cost_functions, silence_state_transition_scores, silence_entrance_scores, silence_exit_scores
 
 # create the list of nodes
 nodes = [countinuous_recognition.NonEmissionNode() for i in range(8)]
@@ -26,6 +31,20 @@ nodes[0].active = True
 nodes[0].candidate = (None, None, 0, None, None)
 
 # add first digit
-print(range(2, 10))
+for i in range(2, 10):
+    countinuous_recognition.HMMEdge(digit_parameters[i][0], digit_parameters[i][1], digit_parameters[i][2],
+                                    digit_parameters[i][3], nodes[0], nodes[1], str(i))
 
+# add the other digits
+for n in range(1, 7):
+    for i in range(10):
+        countinuous_recognition.HMMEdge(digit_parameters[i][0], digit_parameters[i][1], digit_parameters[i][2],
+                                        digit_parameters[i][3], nodes[n], nodes[n + 1], str(i))
 
+# add silence 3,3
+countinuous_recognition.HMMEdge(silence_parameters[0], silence_parameters[1], silence_parameters[2],
+                                silence_parameters[3], nodes[3], nodes[3], '')
+# add jump from 0 to 3
+countinuous_recognition.NonHMMEdge(nodes[0], nodes[1], 0)
+
+# Graph construction completed
