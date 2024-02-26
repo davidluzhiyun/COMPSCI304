@@ -186,7 +186,7 @@ def recognize(nodes, input_features):
         # append the word
         backtrack += current_entry[1]
         # update current entry
-        current_entry = current_entry[4][current_entry[3]]
+        current_entry = current_entry[4].bp[current_entry[3]]
     return cost, ''.join(reversed(backtrack))
 
 
