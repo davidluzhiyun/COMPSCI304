@@ -48,4 +48,6 @@ countinuous_recognition.HMMEdge(silence_parameters[0], silence_parameters[1], si
 countinuous_recognition.NonHMMEdge(nodes[0], nodes[1], 0)
 
 # Graph construction completed
-countinuous_recognition.recognize(nodes, feature_extraction.extract_feature('1234.wav'))
+cost, result = countinuous_recognition.recognize(nodes, feature_extraction.extract_feature('1234.wav'))
+print(cost)
+print(result)
