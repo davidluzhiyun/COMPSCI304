@@ -6,30 +6,34 @@ import numpy as np
 class NonEmissionNode:
     def __init__(self):
         self.bp = []
-        # candidate for dp entry, initialize to None each round. Track record with smallest cost
+        # candidate for bp entry, initialize to None each round. Track record with smallest cost
         # if it is none, indicates that current bp entry has expired
         self.candidate = None
         # edges that goes out, include hmm and non hmm ones
         self.out_edges = []
         # if active, update for all out_edges
         self.active = False
+        # show if the latest entry of the bp is valid
+        self.bp_valid = False
         return
 
-    # update_bp after receiving data
+    # update bp, reset candidate and test validity after receiving data
     def update_bp(self):
         # add entry to bp if received valid update
         if self.candidate is not None:
             self.bp.append(self.candidate)
+            # reset candidate
+            self.candidate = None
+            self.bp_valid = True
+        # indicate if no valid update recieved
+        else:
+            self.bp_valid = False
         return
 
-    # reset candidate after using data
-    def reset_candidate(self):
-        self.candidate = None
-        return
 
     def get_current_score(self):
         # return the latest score if bp valid, else return inf
-        if self.candidate is None:
+        if not self.bp_valid:
             return math.inf
         else:
             return self.bp[-1][2]
@@ -49,11 +53,13 @@ class NonEmissionNode:
         return
 
 class NonHMMEdge:
-    def __init__(self, begin, end):
+    def __init__(self, begin, end, penalty):
         self.initialized = False
         self.begin = begin
         self.begin.out_edges.append(self)
         self.end = end
+        # the penalty score of the edge
+        self.penalty = penalty
 
     def initialize_scores(self, input_sequence, t):
         self.initialized = True
@@ -61,9 +67,9 @@ class NonHMMEdge:
         self.update_scores(input_sequence,t)
 
     def update_scores(self, input_sequence, t):
-        # when the current bp entry from parent is valid
+        # when the current bp entry from parent is valid, penalize and send the bp
         if self.begin.candidate is not None:
-            self.end.recieve_data(self.begin.bp[0],self.begin.bp[1],self.begin.bp[2], self.begin.bp[3], self.begin.bp[4])
+            self.end.recieve_data(self.begin.bp[0],self.begin.bp[1],self.begin.bp[2] + self.penalty, self.begin.bp[3], self.begin.bp[4])
         # else just send something that will be fitered out
         else:
             self.end.recieve_data(None, None, math.inf, None, None)
@@ -152,5 +158,36 @@ class HMMEdge:
         return
 
 
-def recognize(nodes, input_features):
+def recognize(nodes, input_features, current_entry=None):
+    # nodes is a list of nodes in the model
+    # input_features is the extracted result of
+    # if contain non hmm edge, need to adjust the order of nodes to ensure correct activation
+    # assume last node in nodes is end node
     for t in len(input_features):
+        for node in nodes:
+            assert isinstance(node, NonEmissionNode)
+            if node.active:
+                # first update the bp table
+                node.update_bp()
+                # update the edges
+                for edge in node.out_edges:
+                    assert (isinstance(edge, NonHMMEdge) or isinstance(edge,HMMEdge))
+                    if not edge.initialized:
+                        edge.initialize_scores(input_features, t)
+                    else:
+                        edge.update_scores(input_features, t)
+    # back tracking
+    # start with final entry of the bp of the last node
+    current_entry = nodes[-1].bp[-1]
+    cost = current_entry[2]
+    backtrack = ''
+    # end when encounter the root bp
+    while current_entry[1] is not None:
+        # append the word
+        backtrack += current_entry[1]
+        # update current entry
+        current_entry = current_entry[4][current_entry[3]]
+    return cost, ''.join(reversed(backtrack))
+
+
+
