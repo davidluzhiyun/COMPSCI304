@@ -158,7 +158,7 @@ class HMMEdge:
         return
 
 
-def recognize(nodes, input_features, current_entry=None):
+def recognize(nodes, input_features):
     # nodes is a list of nodes in the model
     # input_features is the extracted result of
     # if contain non hmm edge, need to adjust the order of nodes to ensure correct activation
