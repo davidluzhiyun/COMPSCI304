@@ -48,11 +48,33 @@ class NonEmissionNode:
                 self.candidate = (t, word, cost, parent, previous_node)
         return
 
+class NonHMMEdge:
+    def __init__(self, begin, end):
+        self.initialized = False
+        self.begin = begin
+        self.begin.out_edges.append(self)
+        self.end = end
+
+    def initialize_scores(self, input_sequence, t):
+        self.initialized = True
+        # send scored even in initialization
+        self.update_scores(input_sequence,t)
+
+    def update_scores(self, input_sequence, t):
+        # when the current bp entry from parent is valid
+        if self.begin.candidate is not None:
+            self.end.recieve_data(self.begin.bp[0],self.begin.bp[1],self.begin.bp[2], self.begin.bp[3], self.begin.bp[4])
+        # else just send something that will be fitered out
+        else:
+            self.end.recieve_data(None, None, math.inf, None, None)
+
 
 class HMMEdge:
     def __init__(self, node_cost_functions, state_transition_scores, entrance_scores, exit_scores, begin, end, word):
         assert isinstance(begin, NonEmissionNode)
         assert isinstance(end, NonEmissionNode)
+        # initialized shows if the edge is activated
+        self.initialized = False
         # the hmm parameters
         self.node_cost_functions = node_cost_functions
         self.state_transition_scores = state_transition_scores
@@ -83,6 +105,7 @@ class HMMEdge:
             self.costs[state] = self.entrance_scores[state] + self.node_cost_functions[state](
                 input_sequence[t]) + self.begin.get_current_score()
             self.backtrack[state] = self.begin.get_current_backtrack()
+        self.initialized = True
 
     # update the scores and send score to the ending non-emission node if needed
     def update_scores(self, input_sequence, t):
@@ -127,3 +150,7 @@ class HMMEdge:
         self.end.recieve_data(t, self.word, self.costs[-1] + self.exit_scores[-1], self.backtrack[-1], self.begin)
         self.end.recieve_data(t, self.word, self.costs[-2] + self.exit_scores[-2], self.backtrack[-2], self.begin)
         return
+
+
+def recognize(nodes, input_features):
+    for t in len(input_features):
