@@ -68,8 +68,8 @@ class NonHMMEdge:
 
     def update_scores(self, input_sequence, t):
         # when the current bp entry from parent is valid, penalize and send the bp
-        if self.begin.candidate is not None:
-            self.end.recieve_data(self.begin.bp[0],self.begin.bp[1],self.begin.bp[2] + self.penalty, self.begin.bp[3], self.begin.bp[4])
+        if self.begin.bp_valid:
+            self.end.recieve_data(t, '', self.begin.get_current_score() + self.penalty, self.begin.get_current_backtrack(), self.begin)
         # else just send something that will be fitered out
         else:
             self.end.recieve_data(None, None, math.inf, None, None)
