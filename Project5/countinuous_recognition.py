@@ -163,7 +163,7 @@ def recognize(nodes, input_features):
     # input_features is the extracted result of
     # if contain non hmm edge, need to adjust the order of nodes to ensure correct activation
     # assume last node in nodes is end node
-    for t in len(input_features):
+    for t in range(len(input_features)):
         for node in nodes:
             assert isinstance(node, NonEmissionNode)
             if node.active:
