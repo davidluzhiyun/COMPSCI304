@@ -79,7 +79,7 @@ def calculate_state_transition_entrance_exit_costs(labels, k):
     state_counts = np.sum(transition_counts, axis=1, keepdims=True) + exit_counts
     state_transition_probs = transition_counts / state_counts
     entrance_probs = entrance_counts / np.sum(entrance_counts)
-    exit_probs = exit_counts / state_counts
+    exit_probs = np.divide(exit_counts / state_counts)
 
     # Convert probabilities to minus log probabilities
     state_transition_scores = -np.log(state_transition_probs)
