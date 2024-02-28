@@ -44,6 +44,31 @@ def connect_hmms(hmms):
         counter += len(hmm[0])
     return combined_node_cost_functions, combined_state_transition_scores, combined_entrance_scores,combined_exit_scores
 
+def disconnect_hmms(combined_hmm, state_counts):
+    hmms = []
+    counter = 0
+    for i in range(len(state_counts)):
+        assert state_counts[i] >= 2
+        node_cost_functions = combined_hmm[0][counter: counter + state_counts[i]]
+
+        state_transition_scores = combined_hmm[1][counter: counter + state_counts[i], counter: counter + state_counts[i]]
+
+        # ignoring entrance_scores and set it as (0,inf,inf....)
+        entrance_scores = np.full((state_counts[i],), np.inf)
+        entrance_scores[0] = 0
+
+        exit_scores = np.full((state_counts[i],), np.inf)
+        if i == len(state_counts) - 1:
+            exit_scores[-1] = combined_hmm[3][-1]
+            exit_scores[-2] = combined_hmm[3][-2]
+        else:
+            exit_scores[-1] = combined_hmm[1][counter + state_counts[i] - 1, counter + state_counts[i]]
+            exit_scores[-2] = combined_hmm[1][counter + state_counts[i] - 2, counter + state_counts[i]]
+
+        hmms.append((node_cost_functions, state_transition_scores, entrance_scores, exit_scores))
+
+    return hmms
+
 
 
 

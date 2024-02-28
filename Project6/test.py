@@ -21,6 +21,16 @@ print(state_transition_scores)
 print(entrance_scores)
 print(exit_scores)
 
+components = continuous_speech_training.disconnect_hmms((node_cost_functions, state_transition_scores, entrance_scores, exit_scores), [5, 5])
+
+print(components[0][0])
+print(components[0][1])
+print(components[0][2])
+print(components[0][3])
+print(components[1][0])
+print(components[1][1])
+print(components[1][2])
+print(components[1][3])
 
 # res = np.full((5, ), np.inf)
 # print(res.shape)
