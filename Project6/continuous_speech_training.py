@@ -15,18 +15,35 @@ def connect_hmms(hmms):
     for hmm in hmms:
         total_length += len(hmm[0])
 
-    # create combined_state_transition_scores
-    combined_state_transition_scores = np.full((total_length,), np.inf)
-    combined_state_transition_scores[0] = 0
+    # create combined_entrance_scores
+    combined_entrance_scores = np.full((total_length,), np.inf)
+    combined_entrance_scores[0] = 0
 
-    # create template for transition matrix
+    # create combined_exit_scores, which is just the exit scores of the final state
+    combined_exit_scores = np.full((total_length,), np.inf)
+    combined_exit_scores[-1] = hmms[-1][3][-1]
+    combined_exit_scores[-2] = hmms[-1][3][-2]
+
+    # allocate space for combined transition matrix
     combined_state_transition_scores = np.full((total_length, total_length), np.inf)
 
     counter = 0
+    combined_node_cost_functions = []
     for hmm in hmms:
+        # add to combined_node_cost_functions
+        combined_node_cost_functions += hmm[0]
+
         # copy transition matrix
         combined_state_transition_scores[counter: counter + len(hmm[0]),counter: counter + len(hmm[0])] = hmm[1]
+
         # incorporate the exit scores for word transition
-        combined_state_transition_scores[counter + len(hmm[0])-1, counter + len(hmm[0])] =
+        # don't do this for final word
+        if counter + len(hmm[0]) < total_length:
+            combined_state_transition_scores[counter + len(hmm[0]) - 1, counter + len(hmm[0])] = hmm[3][-1]
+            combined_state_transition_scores[counter + len(hmm[0]) - 2, counter + len(hmm[0])] = hmm[3][-2]
+        counter += len(hmm[0])
+    return combined_node_cost_functions, combined_state_transition_scores, combined_entrance_scores,combined_exit_scores
+
+
 
 

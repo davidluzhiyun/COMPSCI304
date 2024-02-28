@@ -2,19 +2,30 @@ import numpy as np
 
 import feature_extraction
 import hmm
+import continuous_speech_training
 
 DATA_PATH = 'data/'
 
 templates = [feature_extraction.extract_feature(DATA_PATH+'seven'+str(i)+'.wav') for i in range(10)]
 node_cost_functions, state_transition_scores, entrance_scores, exit_scores, labels = hmm.segmental_k_means(templates, 5)
 
-print(entrance_scores.shape)
-print(exit_scores.shape)
+print(node_cost_functions)
+print(state_transition_scores)
+print(entrance_scores)
+print(exit_scores)
 
-res = np.full((5, ), np.inf)
-print(res.shape)
-print(labels)
-print(hmm.viterbi_alignment(templates[0], node_cost_functions, state_transition_scores, entrance_scores, exit_scores)[0])
+node_cost_functions, state_transition_scores, entrance_scores, exit_scores = continuous_speech_training.connect_hmms([(node_cost_functions, state_transition_scores, entrance_scores, exit_scores), (node_cost_functions, state_transition_scores, entrance_scores, exit_scores)])
+
+print(node_cost_functions)
+print(state_transition_scores)
+print(entrance_scores)
+print(exit_scores)
+
+
+# res = np.full((5, ), np.inf)
+# print(res.shape)
+# print(labels)
+# print(hmm.viterbi_alignment(templates[0], node_cost_functions, state_transition_scores, entrance_scores, exit_scores)[1])
 # a = np.array([[1,1,1,1,1,1,1],
 #               [1,4,4,4,1,1,1],
 #               [1,4,4,4,1,1,1],
