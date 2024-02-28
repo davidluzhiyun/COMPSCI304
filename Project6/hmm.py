@@ -75,11 +75,11 @@ def calculate_state_transition_entrance_exit_costs(labels, k):
         exit_counts[label_sequence[-1]] += 1
 
     # Calculate probabilities
-    # (np.sum(transition_counts, axis=1, keepdims=True) + exit_counts) gives the number of each state
-    state_counts = np.sum(transition_counts, axis=1, keepdims=True) + exit_counts
+    # (np.sum(transition_counts, axis=1, keepdims=True) + exit_counts.reshape([-1,1]) gives the number of each state in [-1,1] shape
+    state_counts = np.sum(transition_counts, axis=1, keepdims=True) + exit_counts.reshape([-1,1])
     state_transition_probs = transition_counts / state_counts
     entrance_probs = entrance_counts / np.sum(entrance_counts)
-    exit_probs = np.divide(exit_counts, state_counts)
+    exit_probs = np.divide(exit_counts, state_counts.reshape([-1,]))
 
     # Convert probabilities to minus log probabilities
     state_transition_scores = -np.log(state_transition_probs)
